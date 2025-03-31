@@ -1,0 +1,18 @@
+<div class="container">
+  <app-search-bar (search)="filterPokemonList($event)"></app-search-bar>
+  <div class="row">
+    <div class="col-md-3" *ngFor="let pokemon of filteredPokemonList">
+      <div class="card text-center">
+        <img
+          [src]="pokemon.sprite"
+          alt="{{ pokemon.name }}"
+          class="card-img-top"
+        />
+        <div class="card-body">
+          <h5 class="card-title text-capitalize">{{ pokemon.name }}</h5>
+          <a class="btn btn-primary">Details</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
