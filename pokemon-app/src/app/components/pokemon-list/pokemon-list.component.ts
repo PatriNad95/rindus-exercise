@@ -34,28 +34,48 @@ export class PokemonListComponent implements OnInit {
     count: 0,
   };
   displayedColumns: string[] = ['id', 'name', 'sprite'];
+  allPokemons: PokemonBasicInfo[] = [];
 
   constructor(private pokemonService: PokemonService, private router: Router) {}
 
   ngOnInit(): void {
     this.#apiUrl = this.#initialUrl;
     this._callServiceList();
+    this._getAllPokemons();
   }
 
   private _callServiceList() {
-    const idCounter = this._getOffsetFromUrl(this.#apiUrl);
-    this.pokemonService.getPokemonList(this.#apiUrl).subscribe((data) => {
-      this.dataPokemon = data;
-      this.dataSource.data = data.results.map(
-        (pokemon: PokemonBasicInfo, index: number) => ({
-          ...pokemon,
-          id: idCounter + index + 1,
-          sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${
-            idCounter + index + 1
-          }.png`,
-        })
-      );
+    this.pokemonService.getPokemonList(this.#apiUrl).subscribe({
+      next: (data) => {
+        this.dataPokemon = data;
+        const idCounter = this._getOffsetFromUrl();
+        this.dataSource.data = this._mapPokemonData(data.results, idCounter);
+      },
+      error: (err) => console.error('Error obtaining pokemon list:', err),
     });
+  }
+
+  private _getAllPokemons() {
+    const allPokemonsUrl = `${this.#apiUrl}?limit=2000&offset=0`;
+    this.pokemonService.getPokemonList(allPokemonsUrl).subscribe({
+      next: (data) => {
+        this.allPokemons = this._mapPokemonData(data.results, 0);
+      },
+      error: (err) => console.error('Error obtaining all pokemon list:', err),
+    });
+  }
+
+  private _mapPokemonData(
+    pokemons: PokemonBasicInfo[],
+    idOffset: number
+  ): PokemonBasicInfo[] {
+    return pokemons.map((pokemon, index) => ({
+      ...pokemon,
+      id: idOffset + index + 1,
+      sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${
+        idOffset + index + 1
+      }.png`,
+    }));
   }
 
   getPage(_event: PageEvent) {
@@ -67,8 +87,8 @@ export class PokemonListComponent implements OnInit {
     this._callServiceList();
   }
 
-  private _getOffsetFromUrl(url: string): number {
-    const urlParams: URLSearchParams = new URL(url).searchParams;
+  private _getOffsetFromUrl(): number {
+    const urlParams: URLSearchParams = new URL(this.#apiUrl).searchParams;
     return Number(urlParams.get('offset')) || 0;
   }
 
@@ -80,21 +100,9 @@ export class PokemonListComponent implements OnInit {
   }
 
   private _filterPokemon(searchValue: string) {
-    this.pokemonService.getPokemonDetails(searchValue).subscribe({
-      next: (data) => {
-        this.dataSource.data = [
-          {
-            name: data.name,
-            id: data.order,
-            sprite: data.sprites.front_default,
-            url: data.species.url,
-          },
-        ];
-      },
-      error: () => {
-        console.log('Pokemon not found');
-      },
-    });
+    this.dataSource.data = this.allPokemons.filter(
+      (pokemon) => pokemon.name === searchValue
+    );
   }
 
   goToDetail(name: string) {
